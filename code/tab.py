@@ -3,10 +3,13 @@ from dash.dependencies import Input
 from plotly import tools
 import plotly.graph_objs as go
 import os
+import io
 import dash
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table_experiments as dt
+import base64
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -22,15 +25,13 @@ np.set_printoptions(precision=2)
 
 df = pd.read_csv("/home/shivank/Dash-App-master/data/210_add_increment_2.csv")
 df_2= pd.read_csv("/home/shivank/Dash-App-master/data/210_2h.csv")
-print(df_2['flag'].value_counts())
+#print(df_2['flag'].value_counts())
 df_3= pd.read_csv("/home/shivank/Dash-App-master/data/210_3h.csv")
 df_4= pd.read_csv("/home/shivank/Dash-App-master/data/210_4h.csv")
-print(df_3['flag'].value_counts())
+#print(df_3['flag'].value_counts())
 df['IMG_URL']='https://www.drugbank.ca/structures/DB01000/thumb.svg'
 df['NAME']=df['patient id']
 df['DESC']=np.nan
-
-
 
 app = dash.Dash()
 app.config['suppress_callback_exceptions']=True
@@ -234,7 +235,7 @@ def annotate(table):
 
 def randomforest(combine,variable_used):
     feature = variable_used
-    train_set, test_set = train_test_split(combine, test_size=0.4, random_state=100)
+    train_set, test_set = train_test_split(combine, test_size=0.25, random_state=100)
     train_set = train_set.reset_index().drop('index', axis=1)
     test_set = test_set.reset_index().drop('index', axis=1)
     forest_reg = RandomForestClassifier(random_state=40, class_weight={0: 1, 1: 8})
@@ -316,7 +317,48 @@ def GradientBoosting(combine,variable_used):
     Importance = best.feature_importances_
     return table,feature,Importance
 
+
+
+
+
+
+
 app.layout = html.Div([
+        html.Div(
+            html.H2("KPMG",
+                style={
+                    'color': '#4D637F',
+                    'font-family': 'Dosis',
+                        'display': 'inline',
+                        'font-size': '6.0rem',
+                        
+                }
+                )
+            ),
+#
+        html.Div(id='waitfor'),
+    dcc.Upload(
+        id='upload',
+        children=html.Div([
+            'Drag and Drop or ',
+            html.A('Select a File')
+        ]),
+        style={
+            'width': '100%',
+            'height': '60px',
+            'lineHeight': '60px',
+            'borderWidth': '1px',
+            'borderStyle': 'dashed',
+            'borderRadius': '5px',
+            'textAlign': 'center',
+            'margin': '10px'
+        }
+    ),
+    html.Div(id='output'),
+    html.Div(dt.DataTable(rows=[{}]), style={'display': 'none'}),
+
+
+#
         html.Div(
             dcc.Tabs(
                 tabs=[
@@ -343,15 +385,66 @@ app.layout = html.Div([
         'fontFamily': 'Sans-Serif',
         'margin-left': 'auto',
         'margin-right': 'auto',
-    })
+    }
 
 
+)
+
+# app.layout = html.Div([
+#     html.H2("ML Utility"),
+#     ])
+pre_style = {
+    'whiteSpace': 'pre-wrap',
+    'wordBreak': 'break-all',
+    'whiteSpace': 'normal'
+}
+
+#
+@app.callback(Output('output', 'children'),
+              [Input('upload', 'contents')])
+def update_output(contents):
+    if contents is not None:
+        content_type, content_string = contents.split(',')
+        if 'csv' in content_type:
+            df = pd.read_csv(io.StringIO(base64.b64decode(content_string).decode('utf-8')))
+            return html.Div([
+                dt.DataTable(rows=df.to_dict('records')),
+                html.Hr()
+                #html.Div('Raw Content'),
+                #html.Pre(contents, style=pre_style)
+            ])
+        elif 'image' in content_type:
+            return html.Div([
+                html.Img(src=contents),
+                html.Hr(),
+                #html.Div('Raw Content'),
+                html.Pre(contents, style=pre_style)
+            ])
+        else:
+            # xlsx will have 'spreadsheet' in `content_type` but `xls` won't
+            # have anything
+            try:
+                df = pd.read_excel(io.BytesIO(base64.b64decode(content_string)))
+                return html.Div([
+                    dt.DataTable(rows=df.to_dict('records')),
+                    html.Hr(),
+                    #html.Div('Raw Content'),
+                    html.Pre(contents, style=pre_style)
+                ])
+            except:
+                return html.Div([
+                    html.Hr(),
+                    #html.Div('Raw Content'),
+                    html.Pre(contents, style=pre_style)
+                ])
+
+#
 
 @app.callback(Output('tab-output', 'children'), [Input('tabs', 'value')])
 def display_content(value):
     if value == 1:
         return  html.Div([
-            html.H2('210 Patients',
+            html.H3('ML Utility',
                     style={
                         'position': 'relative',
                         'top': '0px',
@@ -375,7 +468,7 @@ def display_content(value):
             html.Div(id='visualization')])
     if value == 2:
         return html.Div([
-            html.H2('210 Patients',
+            html.H3('ML Utility',
                     style={
                         'position': 'relative',
                         'top': '0px',
@@ -421,6 +514,7 @@ def display_content(value):
     dash.dependencies.Output('visualization','children'),
     [dash.dependencies.Input('variable','value')]
 )
+
 def update_visualization(variable):
     if variable not in ['age','Dry Weight','sex','number of records',
                         'total hours in ICU']:
@@ -788,6 +882,7 @@ def update_plot(value):
             ],
             "layout": {
                 "title": "Scatter Plot of " + str(value)
+
             }
         }
 @app.callback(
@@ -825,6 +920,8 @@ def update_matrix(n_click,model,khours,variable_name):
 
         fig.append_trace(trace1, 1, 1)
         fig.append_trace(trace2, 1, 2)
+
+        #print(table[0][0]+" is 0,0 " +table[0][1]+" is 0,1 "+table[1][0]+" is 1,0 "+table[1][1]+"is 1,1"),
 
         fig['layout'].update(title="Precision: %.2f, Recall: %.2f" % (
             table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])))
@@ -909,4 +1006,10 @@ def update_matrix(n_click,model,khours,variable_name):
 
 
 if __name__ == '__main__':
-    app.run_server(port=3001)
+    app.run_server(port=3000)
+
+
+
+
+
+
