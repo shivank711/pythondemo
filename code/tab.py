@@ -251,6 +251,7 @@ def randomforest(combine,variable_used):
     best = rand_search.best_estimator_
     pred = best.predict(test_set[feature])
     table = confusion_matrix(test_set['flag'],pred)
+    #print(table[1][1])
     return table,feature,best.feature_importances_
 
 def SVM(combine,variable_used):
@@ -923,8 +924,17 @@ def update_matrix(n_click,model,khours,variable_name):
 
         #print(table[0][0]+" is 0,0 " +table[0][1]+" is 0,1 "+table[1][0]+" is 1,0 "+table[1][1]+"is 1,1"),
 
-        fig['layout'].update(title="Precision: %.2f, Recall: %.2f" % (
-            table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])))
+        tp = float(table[1][1])
+        tn = float(table[0][1])
+        fn = float(table[0][0])
+        fp = float(table[1][0])
+        pre = tp/(tp+tn)
+        rec = tp/(tp+fp)
+        print(pre)
+        print(rec)
+        # fig['layout'].update(title="Precision: %.10f, Recall: %.10f" % (
+        #  table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])))
+        fig['layout'].update(title="Precision :  %.6f, Recall: %.6f" % (pre, rec))
         fig['layout']['xaxis1'].update(title="Predicted value")
         fig['layout']['yaxis1'].update(title="Real value")
         fig['layout']['xaxis2'].update(tickangle = 60)
@@ -934,6 +944,12 @@ def update_matrix(n_click,model,khours,variable_name):
     if model=="SVM":
         table = SVM(dic[khours], variable_name)
         print(table)
+        tp = float(table[1][1])
+        tn = float(table[0][1])
+        fn = float(table[0][0])
+        fp = float(table[1][0])
+        pre = tp/(tp+tn)
+        rec = tp/(tp+fp)
         return {
             "data": [
                 {
@@ -945,7 +961,7 @@ def update_matrix(n_click,model,khours,variable_name):
                 }
             ],
             "layout": {
-                 "title": "Precision: %.2f, Recall: %.2f" % (table[1][1]/(table[0][1]+table[1][1]),table[1][1]/(table[1][0]+table[1][1])),
+                "title": "Precision: %.2f, Recall: %.2f" % (pre, rec),
                 "xaxis": {"title": "Predicted value"},
                 "yaxis": {"title": "Real value"},
                 "annotations": annotate(table)
@@ -974,9 +990,14 @@ def update_matrix(n_click,model,khours,variable_name):
 
         fig.append_trace(trace1, 1, 1)
         fig.append_trace(trace2, 1, 2)
-
+        tp = float(table[1][1])
+        tn = float(table[0][1])
+        fn = float(table[0][0])
+        fp = float(table[1][0])
+        pre = tp/(tp+tn)
+        rec = tp/(tp+fp)
         fig['layout'].update(title="Precision: %.2f, Recall: %.2f" % (
-            table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])))
+            pre, rec))
         fig['layout']['xaxis1'].update(title="Predicted value")
         fig['layout']['yaxis1'].update(title="Real value")
         fig['layout']['xaxis2'].update(tickangle = 60)
@@ -984,6 +1005,12 @@ def update_matrix(n_click,model,khours,variable_name):
         return fig
     if model=="Logistic Regression":
         table = logistic(dic[khours], variable_name)
+        tp = float(table[1][1])
+        tn = float(table[0][1])
+        fn = float(table[0][0])
+        fp = float(table[1][0])
+        pre = tp/(tp+tn)
+        rec = tp/(tp+fp)
         return {
             "data": [
                 {
@@ -995,8 +1022,7 @@ def update_matrix(n_click,model,khours,variable_name):
                 }
             ],
             "layout": {
-                "title": "Precision: %.2f, Recall: %.2f" % (
-                table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])),
+                "title": "Precision: %.2f, Recall: %.2f" % (pre,rec),
                 "xaxis": {"title": "Predicted value"},
                 "yaxis": {"title": "Real value"},
                 "annotations": annotate(table)
