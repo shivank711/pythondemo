@@ -1,7 +1,9 @@
 #load necessary pkgs
+from plotly.graph_objs import *
 from dash.dependencies import Input
 from plotly import tools
 import plotly.graph_objs as go
+import plotly.figure_factory as ff
 import os
 import io
 import dash
@@ -35,7 +37,7 @@ df['DESC']=np.nan
 
 app = dash.Dash()
 app.config['suppress_callback_exceptions']=True
-
+app.title = " ML Utility"
 app.scripts.config.serve_locally = True
 if 'DYNO' in os.environ:
     app.scripts.append_script({
@@ -235,7 +237,7 @@ def annotate(table):
 
 def randomforest(combine,variable_used):
     feature = variable_used
-    train_set, test_set = train_test_split(combine, test_size=0.25, random_state=100)
+    train_set, test_set = train_test_split(combine, test_size=0.40, random_state=100)
     train_set = train_set.reset_index().drop('index', axis=1)
     test_set = test_set.reset_index().drop('index', axis=1)
     forest_reg = RandomForestClassifier(random_state=40, class_weight={0: 1, 1: 8})
@@ -274,7 +276,7 @@ def SVM(combine,variable_used):
     return table
 
 def logistic(combine,variable_used):
-    train_set, test_set = train_test_split(combine, test_size=0.3, random_state=100)
+    train_set, test_set = train_test_split(combine, test_size=0.40, random_state=100)
     feature = variable_used
     train_set = train_set.reset_index().drop('index', axis=1)
     test_set = test_set.reset_index().drop('index', axis=1)
@@ -318,26 +320,37 @@ def GradientBoosting(combine,variable_used):
     Importance = best.feature_importances_
     return table,feature,Importance
 
-
-
-
-
-
+image_filename = '/home/shivank/Dash-App-master/img/logo.png' # replace with your own image
+encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
 app.layout = html.Div([
         html.Div(
-            html.H2("KPMG",
-                style={
-                    'color': '#4D637F',
-                    'font-family': 'Dosis',
+            # html.H2("KPMG",
+            #     style={
+            #         'color': '#4D637F',
+            #         'font-family': 'Dosis',
+            #             'display': 'inline',
+            #             'font-size': '6.0rem',
+                        
+            #     }
+            #     )
+            
+
+        html.Img(src='data:image/png;base64,{}'.format(encoded_image))
+
+            ),
+        html.H4('ML Utility',
+                    style={
+                        'position': 'relative',
+                        'top': '0px',
+                        'left': '10px',
+                        'font-family': 'Dosis',
                         'display': 'inline',
                         'font-size': '6.0rem',
-                        
-                }
-                )
-            ),
+                        'color': '#4D637F'
+                    }),
 #
-        html.Div(id='waitfor'),
+    html.Div(id='waitfor'),
     dcc.Upload(
         id='upload',
         children=html.Div([
@@ -363,11 +376,15 @@ app.layout = html.Div([
         html.Div(
             dcc.Tabs(
                 tabs=[
+                    {'label': 'Data Input', 'value' : 3},
                     {'label': 'Descriptive Analysis', 'value': 1},
-                    {'label': 'Model Fitting', 'value': 2}
+                    {'label': 'Feature Selection', 'value': 4},
+                    {'label': 'Data Stratification', 'value':5},
+                    {'label': 'Model Fitting', 'value': 2},
+                    
 
                 ],
-                value=1,
+                value=3,
                 id='tabs',
                 vertical= True,
                 style={
@@ -381,7 +398,11 @@ app.layout = html.Div([
         html.Div(
             html.Div(id='tab-output'),
             style={'width': '80%', 'float': 'right'}
-        )
+        ),
+        # html.Div(
+        #     html.Div(id='output'),
+        #     style={'width': '80%', 'float': 'right'}
+        # )
     ], style={
         'fontFamily': 'Sans-Serif',
         'margin-left': 'auto',
@@ -401,10 +422,22 @@ pre_style = {
 }
 
 #
+
+
+#@app.callback(Output('output','children'),Input('tabs','value'))
+
+
+
+
 @app.callback(Output('output', 'children'),
               [Input('upload', 'contents')])
 def update_output(contents):
-    if contents is not None:
+        # return html.Div([
+        #     html.H2("in the call back of upload")
+
+        #     ])
+    if contents is not None :
+        print("in the upload call back")
         content_type, content_string = contents.split(',')
         if 'csv' in content_type:
             df = pd.read_csv(io.StringIO(base64.b64decode(content_string).decode('utf-8')))
@@ -445,16 +478,7 @@ def update_output(contents):
 def display_content(value):
     if value == 1:
         return  html.Div([
-            html.H3('ML Utility',
-                    style={
-                        'position': 'relative',
-                        'top': '0px',
-                        'left': '10px',
-                        'font-family': 'Dosis',
-                        'display': 'inline',
-                        'font-size': '6.0rem',
-                        'color': '#4D637F'
-                    }),
+            
         html.Div([
                 dcc.Dropdown(
                         id='variable',
@@ -469,16 +493,7 @@ def display_content(value):
             html.Div(id='visualization')])
     if value == 2:
         return html.Div([
-            html.H3('ML Utility',
-                    style={
-                        'position': 'relative',
-                        'top': '0px',
-                        'left': '10px',
-                        'font-family': 'Dosis',
-                        'display': 'inline',
-                        'font-size': '6.0rem',
-                        'color': '#4D637F'
-                    }),
+            
         html.Div([
 
             dcc.Dropdown(
@@ -486,7 +501,8 @@ def display_content(value):
                 options=[{'label':'Logistic Regression','value':'Logistic Regression'},
                          {'label': 'Random Forest', 'value': 'Random Forest'},
                          {'label': 'SVM','value':'SVM'},
-                         {'label': 'Boosting','value':'Boosting'}],
+                         {'label': 'Boosting','value':'Boosting'},
+                         {'label': 'Random Forest vs Boosting','value':'rfvsboost'}],
                 placeholder = "Select models"
             )
         ]),
@@ -504,13 +520,94 @@ def display_content(value):
                 placeholder='Select variables used in the model'
             )
         ]),
-            html.Button('Build Model', id='button'),
+        html.Button('Build Model', id='button'),
             html.Div([
                 dcc.Graph(id='confusion matrix')
             ],
                 style={'margin-top': '10'}
             )
             ])
+
+    if value == 4:
+        return html.Div([
+#            html.H2("this is feature selection"),
+        html.Div([
+            dcc.Dropdown(
+                id='khours',
+                options=[{'label':'2 hours','value' :'2 hours'},{'label':'3 hours','value':'3 hours'},{'label':'4 hours','value':'4 hours'}],
+                placeholder = 'Select hours to merge'
+            )
+        ]),
+        html.Div([
+            dcc.Dropdown(
+                id='variable used',
+                multi=True,
+                placeholder='Select variables used in the model'
+            )
+        ]),
+
+            
+       ]),
+
+    # if value == 3:
+    #     return html.Div([
+    #         html.Div([
+    #             html.H2("select data")
+    #             ]),
+    #         html.Div(id='waitfor'),
+    #             dcc.Upload(
+    #                 id='upload',
+    #                 children=html.Div([
+    #                     'Drag and Drop or ',
+    #                     html.A('Select a File')
+    #                 ]),
+    #                 style={
+    #                     'width': '100%',
+    #                     'height': '60px',
+    #                     'lineHeight': '60px',
+    #                     'borderWidth': '1px',
+    #                     'borderStyle': 'dashed',
+    #                     'borderRadius': '5px',
+    #                     'textAlign': 'center',
+    #                     'margin': '10px'
+    #                 }
+    #             ),
+    #         html.Div(id='output'),
+    #         html.Div(dt.DataTable(rows=[{}]), style={'display': 'none'}),
+    #         html.H2("Data Input"),
+
+    if value == 5 :
+        return html.Div([
+            html.Div(html.P("Training Testing Split: ")),
+            html.Div([
+                dcc.Dropdown(
+                  id='my-dropdown',
+                    options=[
+                        {'label': '60 : 40', 'value': '6040'},
+                        {'label': '65 : 45', 'value': '6545'},
+                        {'label': '70 : 30', 'value': '7030'},
+                        {'label': '75 : 25', 'value': '7525'},
+                        {'label': '80 : 20', 'value': '8020'},
+                    ],
+                    value='6040'
+                ),
+
+            ])
+
+
+
+
+
+
+        ])    
+
+
+
+        #]),
+
+
+
+
 @app.callback(
     dash.dependencies.Output('visualization','children'),
     [dash.dependencies.Input('variable','value')]
@@ -895,10 +992,11 @@ def update_plot(value):
      ]
 )
 def update_matrix(n_click,model,khours,variable_name):
+    print("printing n_click, khour,model")
     print(n_click,khours,model,variable_name)
     dic = {'2 hours':df_2,'3 hours': df_3, '4 hours': df_4}
 
-    if model=="Random Forest":
+    if model=="Random Forest" :
         table,feature,importance = randomforest(dic[khours],variable_name)
         temp ={'feature':list(feature),'importance':list(importance)}
         temp = pd.DataFrame(temp)
@@ -924,17 +1022,22 @@ def update_matrix(n_click,model,khours,variable_name):
 
         #print(table[0][0]+" is 0,0 " +table[0][1]+" is 0,1 "+table[1][0]+" is 1,0 "+table[1][1]+"is 1,1"),
 
-        tp = float(table[1][1])
-        tn = float(table[0][1])
-        fn = float(table[0][0])
+        tn = float(table[1][1])
+        fn = float(table[0][1])
+        tp = float(table[0][0])
         fp = float(table[1][0])
         pre = tp/(tp+tn)
         rec = tp/(tp+fp)
-        print(pre)
-        print(rec)
+        acc = (tp+tn)/(tp+tn+fp+fn)
+        print(table[1][1])
+        print(table[0][1])
+        print(table[0][0])
+        print(table[1][0])
+        f = ((2*pre*rec)/(pre+rec))
         # fig['layout'].update(title="Precision: %.10f, Recall: %.10f" % (
         #  table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])))
-        fig['layout'].update(title="Precision :  %.6f, Recall: %.6f" % (pre, rec))
+        fig['layout'].update(title="Accuracy: %.2f F score :  %.6f Precision :  %.6f, Recall: %.6f" % (acc, f, pre, rec))
+
         fig['layout']['xaxis1'].update(title="Predicted value")
         fig['layout']['yaxis1'].update(title="Real value")
         fig['layout']['xaxis2'].update(tickangle = 60)
@@ -944,12 +1047,14 @@ def update_matrix(n_click,model,khours,variable_name):
     if model=="SVM":
         table = SVM(dic[khours], variable_name)
         print(table)
-        tp = float(table[1][1])
-        tn = float(table[0][1])
-        fn = float(table[0][0])
+        tn = float(table[1][1])
+        fn = float(table[0][1])
+        tp = float(table[0][0])
         fp = float(table[1][0])
         pre = tp/(tp+tn)
         rec = tp/(tp+fp)
+        acc = (tp+tn)/(tp+tn+fp+fn)
+        f = ((2*pre*rec)/(pre+rec))
         return {
             "data": [
                 {
@@ -961,12 +1066,111 @@ def update_matrix(n_click,model,khours,variable_name):
                 }
             ],
             "layout": {
-                "title": "Precision: %.2f, Recall: %.2f" % (pre, rec),
+                "title": "Accuracy: %.2f, F Score : %.2f, Precision: %.2f, Recall: %.2f" % (acc, f, pre, rec),
                 "xaxis": {"title": "Predicted value"},
                 "yaxis": {"title": "Real value"},
                 "annotations": annotate(table)
             }
         }
+
+    if model =="rfvsboost":
+        table,feature,importance = randomforest(dic[khours],variable_name)
+        # temp ={'feature':list(feature),'importance':list(importance)}
+        # temp = pd.DataFrame(temp)
+        # temp=temp.sort_values(by='importance',ascending=False)
+        print(table)
+        print("calling boosting")
+        table1,feature1,importance1 = GradientBoosting(dic[khours], variable_name)
+        #table1,feature1,importance1 = randomforest(dic[khours],variable_name)
+        print("called gbm")
+        print(table1)
+        trace1 = go.Heatmap(
+            
+            x=['control', 'case'],
+            y=['case', 'control'],
+            z=[[table[1][0], table[1][1]],
+               [table[0][0], table[0][1]]],
+            showscale=False,
+            
+            text = [["TP", "FN"],
+                ["FP", "TN"]],
+            autocolorscale = False,
+        )
+        
+        # z = [[table[0][0],table[0][1]],
+        #     [table[1][0], table[1][1]]]
+        # x = ['Predicted Values',' ']
+        # y = ['Real Values',' ']
+
+        # z_text = [['TP', 'FN'],  
+        #       ['FP', 'TN']]
+
+        # trace1 = ff.create_annotated_heatmap(z, x=x, y=y, annotation_text=z)
+
+        trace2= go.Heatmap(
+                #title = "this is form boosting",
+            x= ['control', 'case'],
+            y= ['case', 'control'],
+            z=[[table1[1][0], table1[1][1]],
+                [table1[0][0], table1[0][1]]],
+            text = [["TP", "FN"],
+                ["FP", "TN"]],
+            showscale=True,
+            autocolorscale=False,
+            #layout=Layout()  
+         )
+        # trace2 = go.Layout(
+        #     title = "this is from boosting"
+        #     )              
+
+   #     trace2 = ff.create_annotated_heatmap(table1, x=x, y=y, annotation_text=z)
+        print("done with traces")
+        fig = tools.make_subplots(rows=1, cols=2)
+        fig.append_trace(trace1, 1, 1)
+        fig.append_trace(trace2, 1, 2)
+
+        print("done with boosting")
+        tn = float(table[1][1])
+        fn = float(table[0][1])
+        tp = float(table[0][0])
+        fp = float(table[1][0])
+        pre = tp/(tp+tn)
+        rec = tp/(tp+fp)
+        acc = (tp+tn)/(tp+tn+fp+fn)
+        print(table[1][1])
+        print(table[0][1])
+        print(table[0][0])
+        print(table[1][0])
+        f = ((2*pre*rec)/(pre+rec))
+        
+        tn1 = float(table1[1][1])
+        fn1 = float(table1[0][1])
+        tp1 = float(table1[0][0])
+        fp1 = float(table1[1][0])
+        pre1 = tp1/(tp1+tn1)
+        rec1 = tp1/(tp1+fp1)
+        f1 = ((2*pre1*rec1)/(pre1+rec1))
+        acc1 = (tp1+tn1)/(tp1+tn1+fp1+fn1)
+
+
+      ## fig['layout'].update(title="Precision: %.10f, Recall: %.10f" % (
+      #  #  table[1][1] / (table[0][1] + table[1][1]), table[1][1] / (table[1][0] + table[1][1])))
+        fig['layout'].update(title="Acc RF: %.2f F score RF:  %.2f Prec RF:  %.2f, Rec RF: %.2f Acc Boost: %.2f F score Boost:  %.2f Prec Boost:  %.2f, Rec Boost: %.2f" % (acc, f, pre, rec, acc1,f1,pre1,rec1))
+        #fig['layout'].update(title="Accuracy Boosting: %.6f F score Boosting:  %.6f Precision Boosting:  %.6f, Recall Boosting: %.6f" % (acc1, f1, pre1, rec1))
+
+        fig['layout']['xaxis1'].update(title="Predicted value Random Forest")
+        fig['layout']['yaxis1'].update(title="Real value")
+        # #print("done with predict value and real value update")
+        fig['layout']['xaxis2'].update(title="Predicted value Boosting")
+        fig['layout']['yaxis2'].update(title="Real value")
+        fig['layout'].update( annotations = annotate(table),font=dict(size=12))
+        #fig['trace2'].update( annotations = annotate(table1),font=dict(size=12))
+        # print("done with annotations")
+        #fig['layout'].update( annotations = annotate(table1),font=dict(size=8))
+                
+        return fig
+
+
     if model=="Boosting":
         table,feature,importance = GradientBoosting(dic[khours], variable_name)
         print(table)
@@ -990,14 +1194,16 @@ def update_matrix(n_click,model,khours,variable_name):
 
         fig.append_trace(trace1, 1, 1)
         fig.append_trace(trace2, 1, 2)
-        tp = float(table[1][1])
-        tn = float(table[0][1])
-        fn = float(table[0][0])
+        tn = float(table[1][1])
+        fn = float(table[0][1])
+        tp = float(table[0][0])
         fp = float(table[1][0])
         pre = tp/(tp+tn)
         rec = tp/(tp+fp)
-        fig['layout'].update(title="Precision: %.2f, Recall: %.2f" % (
-            pre, rec))
+        f = ((2*pre*rec)/(pre+rec))
+        acc = (tp+tn)/(tp+tn+fp+fn)
+        fig['layout'].update(title="Accuracy: %.2f, F Score: %.2f Precision: %.2f, Recall: %.2f" % (
+           acc, f, pre, rec))
         fig['layout']['xaxis1'].update(title="Predicted value")
         fig['layout']['yaxis1'].update(title="Real value")
         fig['layout']['xaxis2'].update(tickangle = 60)
@@ -1005,12 +1211,14 @@ def update_matrix(n_click,model,khours,variable_name):
         return fig
     if model=="Logistic Regression":
         table = logistic(dic[khours], variable_name)
-        tp = float(table[1][1])
-        tn = float(table[0][1])
-        fn = float(table[0][0])
+        tn = float(table[1][1])
+        fn = float(table[0][1])
+        tp = float(table[0][0])
         fp = float(table[1][0])
         pre = tp/(tp+tn)
         rec = tp/(tp+fp)
+        f = ((2*pre*rec)/(pre+rec))
+        acc = (tp+tn)/(tp+tn+fp+fn)
         return {
             "data": [
                 {
@@ -1020,9 +1228,15 @@ def update_matrix(n_click,model,khours,variable_name):
                     "z": [[table[1][0], table[1][1]],
                           [table[0][0], table[0][1]]]
                 }
+                  
             ],
             "layout": {
-                "title": "Precision: %.2f, Recall: %.2f" % (pre,rec),
+                "title": "Accuracy: %.2f F Score : %.2f, Precision: %.2f, Recall: %.2f" % (acc, f, pre,rec),
+                "xaxis": {"title": "Predicted value"},
+                "yaxis": {"title": "Real value"},
+                "annotations": annotate(table),
+
+                "title": "Accuracy: %.2f F Score : %.2f, Precision: %.2f, Recall: %.2f" % (acc, f, pre,rec),
                 "xaxis": {"title": "Predicted value"},
                 "yaxis": {"title": "Real value"},
                 "annotations": annotate(table)
